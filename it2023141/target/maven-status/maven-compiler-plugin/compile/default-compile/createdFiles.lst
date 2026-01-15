@@ -1,0 +1,14 @@
+org\example\Q1$TokenizerMapper.class
+org\example\Q4$AggregateReducer.class
+org\example\Q1.class
+org\example\Q3$InvertedIndexReducer.class
+org\example\Q4$FileCountMapper.class
+org\example\Q2$DifferenceReducer.class
+org\example\Q4$AggregateMapper.class
+org\example\Q2.class
+org\example\Q3$InvertedIndexMapper.class
+org\example\Q4$FileCountReducer.class
+org\example\Q4.class
+org\example\Q2$FileAwareMapper.class
+org\example\Q1$IntSumReducer.class
+org\example\Q3.class
