@@ -11,6 +11,8 @@ import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.StringTokenizer;
 
 public class Q2 {
@@ -24,7 +26,6 @@ public class Q2 {
         @Override
         protected void setup(Context context)
                 throws IOException, InterruptedException {
-            // Παίρνουμε το όνομα του αρχείου
             String filePath = ((FileSplit) context.getInputSplit())
                     .getPath().toString();
             if (filePath.contains("pg100.txt")) {
@@ -38,7 +39,6 @@ public class Q2 {
 
         public void map(Object key, Text value, Context context
         ) throws IOException, InterruptedException {
-            // Διαβάζουμε μόνο τα δύο αρχεία που μας ενδιαφέρουν
             if (fileName.toString().equals("pg100") ||
                     fileName.toString().equals("pg24269")) {
 
@@ -48,6 +48,26 @@ public class Q2 {
                     word.set(itr.nextToken());
                     context.write(word, fileName);
                 }
+            }
+        }
+    }
+    public static class FileCombiner
+            extends Reducer<Text, Text, Text, Text> {
+
+        public void reduce(Text key, Iterable<Text> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            Set<String> files = new HashSet<>();
+
+            for (Text file : values) {
+                files.add(file.toString());
+                if (files.size() == 2) {
+                    break;
+                }
+            }
+
+            for (String file : files) {
+                context.write(key, new Text(file));
             }
         }
     }
@@ -61,16 +81,23 @@ public class Q2 {
             boolean inPg100 = false;
             boolean inPg24269 = false;
 
-            // Ελέγχουμε σε ποια αρχεία υπάρχει η λέξη
             for (Text file : values) {
-                if (file.toString().equals("pg100")) {
+                String fileName = file.toString();
+                if (fileName.equals("pg100")) {
                     inPg100 = true;
-                } else if (file.toString().equals("pg24269")) {
+                } else if (fileName.equals("pg24269")) {
                     inPg24269 = true;
+                }
+
+                if (inPg100) {
+                    return;
+                }
+
+                if (inPg100 && inPg24269) {
+                    return;
                 }
             }
 
-            // Εκτυπώνουμε μόνο αν υπάρχει στο pg24269 και ΟΧΙ στο pg100
             if (inPg24269 && !inPg100) {
                 context.write(key, NullWritable.get());
             }
@@ -82,9 +109,14 @@ public class Q2 {
         Job job = Job.getInstance(conf, "words in pg24269 not in pg100");
         job.setJarByClass(Q2.class);
         job.setMapperClass(FileAwareMapper.class);
+        job.setCombinerClass(FileCombiner.class);
         job.setReducerClass(DifferenceReducer.class);
+
+        job.setMapOutputKeyClass(Text.class);
+        job.setMapOutputValueClass(Text.class);
         job.setOutputKeyClass(Text.class);
-        job.setOutputValueClass(Text.class);
+        job.setOutputValueClass(NullWritable.class);
+
         FileInputFormat.addInputPath(job, new Path(args[0]));
         FileOutputFormat.setOutputPath(job, new Path(args[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);

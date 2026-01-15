@@ -18,11 +18,10 @@ public class Q1 {
             extends Mapper<Object, Text, Text, IntWritable> {
 
         private final static IntWritable one = new IntWritable(1);
-        private Text word = new Text();
+        private final Text word = new Text();
 
         public void map(Object key, Text value, Context context
         ) throws IOException, InterruptedException {
-            // Χωρίζουμε τη γραμμή σε λέξεις
             StringTokenizer itr = new StringTokenizer(value.toString()
                     .toLowerCase().replaceAll("[^a-z\\s]", " "));
             while (itr.hasMoreTokens()) {
@@ -32,10 +31,10 @@ public class Q1 {
         }
     }
 
-    public static class IntSumReducer
+    public static class SumCombiner
             extends Reducer<Text, IntWritable, Text, IntWritable> {
 
-        private IntWritable result = new IntWritable();
+        private final IntWritable result = new IntWritable();
 
         public void reduce(Text key, Iterable<IntWritable> values,
                            Context context
@@ -44,7 +43,23 @@ public class Q1 {
             for (IntWritable val : values) {
                 sum += val.get();
             }
-            // Φιλτράρουμε μόνο λέξεις με συχνότητα >= 100
+            result.set(sum);
+            context.write(key, result);
+        }
+    }
+
+    public static class IntSumReducer
+            extends Reducer<Text, IntWritable, Text, IntWritable> {
+
+        private final IntWritable result = new IntWritable();
+
+        public void reduce(Text key, Iterable<IntWritable> values,
+                           Context context
+        ) throws IOException, InterruptedException {
+            int sum = 0;
+            for (IntWritable val : values) {
+                sum += val.get();
+            }
             if (sum >= 100) {
                 result.set(sum);
                 context.write(key, result);
@@ -57,7 +72,7 @@ public class Q1 {
         Job job = Job.getInstance(conf, "word count total");
         job.setJarByClass(Q1.class);
         job.setMapperClass(TokenizerMapper.class);
-        job.setCombinerClass(IntSumReducer.class);
+        job.setCombinerClass(SumCombiner.class);
         job.setReducerClass(IntSumReducer.class);
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(IntWritable.class);
